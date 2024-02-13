@@ -76,19 +76,21 @@ function custom_csv_page() {
     }
 
     // Display file upload form
+    echo '<div class="import-csv-wrap">';
     echo '<form method="post" enctype="multipart/form-data">';
-    echo '<input type="file" name="csv_file">';
-    echo '<input type="submit" value="Upload CSV">';
+    echo '<input type="file" name="csv_file" class="page-title-action">';
+    echo '<input type="submit" value="Upload CSV" class="button button-primary button-large">';
     echo '</form>';
+    echo '</div>';
 
     // Retrieve data from database and display table
     $table_name = $wpdb->prefix . 'custom_csv_data';
     $csv_data = $wpdb->get_results("SELECT * FROM $table_name");
 
     if ($csv_data) {
-        echo '<table>';
-        echo '<thead><tr><th>ID</th><th>User Name</th><th>Import Date</th><th>Status</th></tr></thead>';
-        echo '<tbody>';
+        echo '<table class="import-table-list">';
+        echo '<thead class="import-table-head"><tr><th>ID</th><th>User Name</th><th>Import Date</th><th>Status</th></tr></thead>';
+        echo '<tbody class="import-table-body">';
         foreach ($csv_data as $row) {
             echo '<tr>';
             echo '<td>' . $row->id . '</td>';
@@ -100,4 +102,39 @@ function custom_csv_page() {
         echo '</tbody>';
         echo '</table>';
     }
-}
+} ?>
+
+<style type="text/css">
+    .import-csv-wrap {
+        margin-top: 30px;
+    }
+    .page-title-action {
+        color: #2271b1;
+        border-color: #2271b1;
+        vertical-align: top;
+    }
+    .import-table-list {
+        background-color: #fff;
+        width: 100%;
+        margin-top: 30px;
+    }
+    thead.import-table-head tr {
+
+    }
+    thead.import-table-head tr th {
+        color: #2271b1;
+        font-weight: 400;
+        padding: 10px;
+        text-align: left;
+    }
+    tbody.import-table-body tr {
+
+    }
+    tbody.import-table-body tr:nth-child(odd) {
+        background-color: #f6f7f7;
+    }
+    tbody.import-table-body tr td {
+        padding: 10px;
+        box-sizing: border-box;
+    }
+</style>
