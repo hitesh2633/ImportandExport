@@ -1,0 +1,103 @@
+<?php
+/*
+Plugin Name: Custom CSV Importer
+Description: Import CSV file and display data in a table.
+*/
+
+// Create custom database table on plugin activation
+function custom_csv_create_table() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'custom_csv_data';
+
+    $charset_collate = $wpdb->get_charset_collate();
+
+    $sql = "CREATE TABLE $table_name (
+        id mediumint(9) NOT NULL AUTO_INCREMENT,
+        username varchar(255) NOT NULL,
+        import_date datetime NOT NULL,
+        status varchar(20) NOT NULL,
+        PRIMARY KEY  (id)
+    ) $charset_collate;";
+
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+}
+register_activation_hook(__FILE__, 'custom_csv_create_table');
+
+// Create custom menu
+function custom_csv_menu() {
+    add_menu_page('CSV Import', 'CSV Import', 'manage_options', 'csv-import', 'custom_csv_page');
+}
+add_action('admin_menu', 'custom_csv_menu');
+
+// Custom menu page
+function custom_csv_page() {
+    global $wpdb;
+
+    // Handle CSV file upload
+    if (isset($_FILES['csv_file'])) {
+        $csv_file = $_FILES['csv_file'];
+        $csv_data = file_get_contents($csv_file['tmp_name']);
+
+        // Parse CSV data
+        $csv_rows = array_map('str_getcsv', explode("\n", $csv_data));
+
+        // Check if CSV data already exists
+        $table_name = $wpdb->prefix . 'custom_csv_data';
+        $existing_csv_data = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+
+        // Determine the status
+        $status = $existing_csv_data > 0 ? 'completed' : 'new';
+
+        // Save CSV data and import date to the database
+        $imported_data = array(); // Store imported data to prevent duplicates
+        $first_row_skipped = false;
+        foreach ($csv_rows as $row) {
+            if (!$first_row_skipped) {
+                $first_row_skipped = true;
+                continue; // Skip the first row (header row)
+            }
+
+            if (!empty(array_filter($row))) { // Skip empty rows
+                $username = isset($row[1]) ? $row[1] : ''; // Assuming username is in the second column
+                $import_date = current_time('mysql');
+                $data_to_insert = array('username' => $username, 'import_date' => $import_date, 'status' => $status);
+
+                // Check if data already exists
+                if (!in_array($data_to_insert, $imported_data)) {
+                    $wpdb->insert($table_name, $data_to_insert);
+                    $imported_data[] = $data_to_insert; // Add imported data to prevent duplicates
+                }
+            }
+        }
+
+        // Display success message
+        echo 'CSV file uploaded and data saved successfully.';
+    }
+
+    // Display file upload form
+    echo '<form method="post" enctype="multipart/form-data">';
+    echo '<input type="file" name="csv_file">';
+    echo '<input type="submit" value="Upload CSV">';
+    echo '</form>';
+
+    // Retrieve data from database and display table
+    $table_name = $wpdb->prefix . 'custom_csv_data';
+    $csv_data = $wpdb->get_results("SELECT * FROM $table_name");
+
+    if ($csv_data) {
+        echo '<table>';
+        echo '<thead><tr><th>ID</th><th>User Name</th><th>Import Date</th><th>Status</th></tr></thead>';
+        echo '<tbody>';
+        foreach ($csv_data as $row) {
+            echo '<tr>';
+            echo '<td>' . $row->id . '</td>';
+            echo '<td>' . htmlspecialchars($row->username) . '</td>';
+            echo '<td>' . $row->import_date . '</td>';
+            echo '<td>' . $row->status . '</td>';
+            echo '</tr>';
+        }
+        echo '</tbody>';
+        echo '</table>';
+    }
+}
